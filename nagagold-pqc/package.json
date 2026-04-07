@@ -1,0 +1,22 @@
+{
+  "name": "nagagold-pqc",
+  "version": "0.1.0",
+  "description": "Nagagold + PQC (ML-KEM-768) per-field encryption helpers",
+  "type": "module",
+  "exports": {
+    ".": {
+      "browser": "./src/web/index.js",
+      "node": "./src/node/index.js",
+      "default": "./src/node/index.js"
+    }
+  },
+  "main": "./src/node/index.js",
+  "module": "./src/web/index.js",
+  "files": [
+    "src/**/*",
+    "README.md"
+  ],
+  "dependencies": {
+    "@oqs/liboqs-js": "^0.9.0"
+  }
+}
