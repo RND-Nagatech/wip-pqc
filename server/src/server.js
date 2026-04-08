@@ -367,8 +367,7 @@ async function decryptFieldValue(fieldValue, kem, store) {
   const kemSecretKey = toUint8(Buffer.from(entry.kemSecretKey, "base64"));
   const sharedSecret = kem.decapsulate(kemCiphertext, kemSecretKey);
   const payloadPqc = decodePayloadPqc(payloadPart);
-  const valueNg = aesGcmDecrypt(payloadPqc, sharedSecret);
-  const valuePlain = decryptAscii(valueNg, entry.ngKey || NG_ENC_KEY);
+  const valuePlain = aesGcmDecrypt(payloadPqc, sharedSecret);
   return valuePlain;
 }
 
@@ -407,11 +406,10 @@ app.post("/api/items", async (req, res) => {
         doc[field] = value;
         continue;
       }
-      const valueNg = encryptAscii(String(value ?? ""), ngKey);
       const kemEnc = kem.encapsulate(toUint8(kemKeys.publicKey));
       const sharedSecret = kemEnc.sharedSecret;
       const kemCiphertext = kemEnc.ciphertext;
-      const payloadPqc = aesGcmEncrypt(valueNg, sharedSecret);
+      const payloadPqc = aesGcmEncrypt(String(value ?? ""), sharedSecret);
       const kemStr = encodeKem(
         "ML-KEM-768",
         kid,
@@ -524,11 +522,10 @@ app.patch("/api/items/:id", async (req, res) => {
         updateDoc[field] = updatedPlain[field];
         continue;
       }
-      const valueNg = encryptAscii(String(updatedPlain[field] ?? ""), ngKey);
       const kemEnc = kem.encapsulate(toUint8(kemKeys.publicKey));
       const sharedSecret = kemEnc.sharedSecret;
       const kemCiphertext = kemEnc.ciphertext;
-      const payloadPqc = aesGcmEncrypt(valueNg, sharedSecret);
+      const payloadPqc = aesGcmEncrypt(String(updatedPlain[field] ?? ""), sharedSecret);
       const kemStr = encodeKem(
         "ML-KEM-768",
         kid,
@@ -590,8 +587,6 @@ app.post("/api/tools/decrypt-text", async (req, res) => {
       typeof combinedRaw === "string" ? combinedRaw.trim() : combinedRaw;
     const payload_pqc = req.body?.payload_pqc;
     const kemStr = req.body?.kem;
-    const autoNagagold =
-      req.body?.auto_nagagold === undefined ? true : Boolean(req.body?.auto_nagagold);
     let kemParsed;
     let payloadPqc;
     if (combined) {
@@ -616,24 +611,7 @@ app.post("/api/tools/decrypt-text", async (req, res) => {
 
     const text = aesGcmDecrypt(payloadPqc, sharedSecret);
 
-    let payload_plain = null;
-    if (autoNagagold) {
-      try {
-        const parsed = JSON.parse(text);
-        if (shouldNagagoldDecrypt(parsed)) {
-          payload_plain = decryptNagagoldPayload(parsed, entry.ngKey || NG_ENC_KEY);
-        } else {
-          payload_plain = parsed;
-        }
-      } catch (err) {
-        payload_plain = null;
-      }
-      if (payload_plain === null && isHexLike(text)) {
-        payload_plain = decryptAscii(text, entry.ngKey || NG_ENC_KEY);
-      }
-    }
-
-    res.json({ text, payload_plain });
+    res.json({ text, payload_plain: null });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }

@@ -1,6 +1,6 @@
 # nagagold-pqc
 
-Library helper untuk enkripsi per-field menggunakan Nagagold + PQC (ML-KEM-768) + AES-GCM.
+Library helper untuk enkripsi per-field menggunakan PQC (ML-KEM-768) + AES-GCM.
 
 ## Instalasi (lokal)
 Di project lain:
@@ -18,7 +18,6 @@ npm install nagagold-pqc
 import { createNodePqc } from "nagagold-pqc";
 
 const pqc = await createNodePqc({
-  ngKey: process.env.NG_ENC_KEY,
   masterKey: process.env.MASTER_KEY, // base64 32 bytes
   keystorePath: "keys/keystore.enc.json",
   kid: "pqc-default"
@@ -37,12 +36,10 @@ import { createWebPqc } from "nagagold-pqc";
 
 // keystore harus disediakan dari server (public & secret key base64)
 const pqc = await createWebPqc({
-  ngKey: "...",
   kid: "pqc-default",
   keystore: {
     kemPublicKey: "...",
-    kemSecretKey: "...",
-    ngKey: "..."
+    kemSecretKey: "..."
   }
 });
 
@@ -70,3 +67,4 @@ iv|tag|cipher
 - Library ini tidak memakai signature.
 - Untuk browser, pastikan bundler bisa memuat WASM dari `@oqs/liboqs-js`.
 - `MASTER_KEY` wajib base64 32 bytes (gunakan `openssl rand -base64 32`).
+- Disarankan Node.js >= 22 untuk kompatibilitas `@oqs/liboqs-js`.

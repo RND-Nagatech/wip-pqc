@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
-import { init as oqsInit, createMLKEM768 } from "@oqs/liboqs-js";
+import { createMLKEM768 } from "@oqs/liboqs-js";
 import {
   encodePayloadPqc,
   decodePayloadPqc,
@@ -13,7 +13,6 @@ import {
   b64ToBytes,
   bytesToB64
 } from "../shared/format.js";
-import { encryptAscii, decryptAscii, isHexLike } from "../shared/nagagold.js";
 
 function ensureDir(filePath) {
   const dir = path.dirname(filePath);
@@ -73,8 +72,7 @@ function loadMasterKey(masterKeyB64) {
 }
 
 export class NagagoldPqcNode {
-  constructor({ ngKey, masterKey, keystorePath = "keys/keystore.enc.json", kid = "pqc-default" }) {
-    this.ngKey = ngKey;
+  constructor({ masterKey, keystorePath = "keys/keystore.enc.json", kid = "pqc-default" }) {
     this.masterKey = masterKey;
     this.keystorePath = keystorePath;
     this.kid = kid;
@@ -85,7 +83,6 @@ export class NagagoldPqcNode {
 
   async init() {
     if (this._initialized) return;
-    await oqsInit();
     this._kem = await createMLKEM768();
     const store = this._readKeystore();
     if (store) {
@@ -101,7 +98,6 @@ export class NagagoldPqcNode {
       keys: {
         [this.kid]: {
           createdAt: now,
-          ngKey: this.ngKey,
           kemPublicKey: bytesToB64(toUint8(kemKeys.publicKey)),
           kemSecretKey: bytesToB64(toUint8(kemKeys.secretKey))
         }
@@ -143,7 +139,7 @@ export class NagagoldPqcNode {
     const entry = this._getEntry(kid);
     if (!entry) throw new Error(`Key not found for kid: ${kid}`);
     const kemEnc = this._kem.encapsulate(toUint8(b64ToBytes(entry.kemPublicKey)));
-    const payloadPqc = aesGcmEncrypt(encryptAscii(String(plainText ?? ""), entry.ngKey), kemEnc.sharedSecret);
+    const payloadPqc = aesGcmEncrypt(String(plainText ?? ""), kemEnc.sharedSecret);
     const kemStr = encodeKem("ML-KEM-768", kid, entry.kemPublicKey, bytesToB64(kemEnc.ciphertext));
     const payloadStr = encodePayloadPqc(payloadPqc);
     return encodeFieldValue(kemStr, payloadStr);
@@ -159,8 +155,8 @@ export class NagagoldPqcNode {
       toUint8(b64ToBytes(entry.kemSecretKey))
     );
     const payloadPqc = decodePayloadPqc(payloadPart);
-    const valueNg = aesGcmDecrypt(payloadPqc, sharedSecret);
-    return decryptAscii(valueNg, entry.ngKey);
+    const valuePlain = aesGcmDecrypt(payloadPqc, sharedSecret);
+    return valuePlain;
   }
 
   encryptText(text) {
@@ -178,7 +174,7 @@ export class NagagoldPqcNode {
     };
   }
 
-  decryptText({ combined, kem, payload_pqc, autoNagagold = true }) {
+  decryptText({ combined, kem, payload_pqc }) {
     let kemParsed;
     let payloadPqc;
     if (combined) {
@@ -197,11 +193,7 @@ export class NagagoldPqcNode {
       toUint8(b64ToBytes(entry.kemSecretKey))
     );
     const text = aesGcmDecrypt(payloadPqc, sharedSecret);
-    let payload_plain = null;
-    if (autoNagagold && isHexLike(text)) {
-      payload_plain = decryptAscii(text, entry.ngKey);
-    }
-    return { text, payload_plain };
+    return { text, payload_plain: null };
   }
 }
 

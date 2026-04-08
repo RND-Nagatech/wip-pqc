@@ -433,8 +433,12 @@ export default function App() {
                       <button type="button" onClick={() => copyText(textDecryptResult.payload_plain)}>
                         Copy
                       </button>
-                    ) : (
+                    ) : textDecryptResult.payload_plain ? (
                       <button type="button" onClick={() => copyJson(textDecryptResult.payload_plain)}>
+                        Copy
+                      </button>
+                    ) : (
+                      <button type="button" onClick={() => copyText(textDecryptResult.text || "")}>
                         Copy
                       </button>
                     )}
